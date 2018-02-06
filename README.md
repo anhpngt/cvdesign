@@ -1,2 +1,2 @@
-# cvdesign
-For school
+# Computer Vision Design Module
+School assignment
