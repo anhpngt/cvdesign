@@ -61,7 +61,7 @@ double computeGaussianWeight(int x, int y, double sigma)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-Vec2d getGaussianSmoothingMask(double sigma)
+Vec2d getGaussianSmoothingMask(const double sigma)
 {
   // Compute mask size
   if(sigma <= 0)
@@ -106,6 +106,7 @@ void conv2d(const Vec2d input, const Vec2d mask, Vec2d &output)
     std::cout << "Empty mask matrix in 2D convolution!" << std::endl;
     exit(-1);
   }
+
   // Get output dimensions
   uint16_t out_height = input.size() - mask.size() + 1;
   uint16_t out_width = input[0].size() - mask[0].size() + 1;
@@ -118,10 +119,31 @@ void conv2d(const Vec2d input, const Vec2d mask, Vec2d &output)
     for(uint16_t y = 0; y < out_width; y++)
       for(uint16_t mask_x = 0; mask_x < mask.size(); mask_x++)
         for(uint16_t mask_y = 0; mask_y < mask[0].size(); mask_y++)
-        {
           output[x][y] += input[x + mask_x][y + mask_y] * mask[mask_x][mask_y];
-        }
   return;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+Vec2d computeImageDerivatives(const Vec2d input)
+{
+  Vec2d img_dx, img_dy, img_I;
+  Vec2d mask_dx = {{-1, -2, -1},
+                   { 0,  0,  0},
+                   { 1,  2,  1}};
+  Vec2d mask_dy = {{-1, 0, 1},
+                   {-2, 0, 2},
+                   {-1, 0, 1}};
+  conv2d(input, mask_dx, img_dx);
+  conv2d(input, mask_dy, img_dy);
+  img_I.resize(img_dx.size(), std::vector<double>(img_dx[0].size(), 0));
+  for(uint16_t x = 0; x < img_I.size(); x++)
+    for(uint16_t y = 0; y < img_I[0].size(); y++)
+    {
+      double Ix = img_dx[x][y];
+      double Iy = img_dy[x][y];
+      img_I[x][y] = sqrt(Ix * Ix + Iy * Iy);
+    }
+  return img_I;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -171,12 +193,17 @@ int main(int argc, char** argv)
     std::cout << std::endl;
   }
 
+  // Compute Derivatives
+  Vec2d img_derivative = computeImageDerivatives(img_smoothed);
+
   // Visualize using OpenCV
   printf("Visualizing...\n");
   cv::namedWindow("Source", cv::WINDOW_AUTOSIZE);
   cv::namedWindow("Gaussian Smoothed", cv::WINDOW_AUTOSIZE);
+  cv::namedWindow("Derivative", cv::WINDOW_AUTOSIZE);
   cv::imshow("Source", VecToMat(img_src));
   cv::imshow("Gaussian Smoothed", VecToMat(img_smoothed));
+  cv::imshow("Derivative", VecToMat(img_derivative));
 
   cv::waitKey(-1);
   return 0;
