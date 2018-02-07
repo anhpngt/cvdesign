@@ -96,6 +96,16 @@ Vec2d getGaussianSmoothingMask(double sigma)
 ///////////////////////////////////////////////////////////////////////////////
 void conv2d(const Vec2d input, const Vec2d mask, Vec2d &output)
 {
+  if(input.empty())
+  {
+    std::cout << "Empty input matrix in 2D convolution!" << std::endl;
+    exit(-1);
+  }
+  if(mask.empty())
+  {
+    std::cout << "Empty mask matrix in 2D convolution!" << std::endl;
+    exit(-1);
+  }
   // Get output dimensions
   uint16_t out_height = input.size() - mask.size() + 1;
   uint16_t out_width = input[0].size() - mask[0].size() + 1;
@@ -106,9 +116,11 @@ void conv2d(const Vec2d input, const Vec2d mask, Vec2d &output)
   // Conv
   for(uint16_t x = 0; x < out_height; x++)
     for(uint16_t y = 0; y < out_width; y++)
-    {
-      output[x][y] = input[x][y]*mask[
-    }
+      for(uint16_t mask_x = 0; mask_x < mask.size(); mask_x++)
+        for(uint16_t mask_y = 0; mask_y < mask[0].size(); mask_y++)
+        {
+          output[x][y] += input[x + mask_x][y + mask_y] * mask[mask_x][mask_y];
+        }
   return;
 }
 
