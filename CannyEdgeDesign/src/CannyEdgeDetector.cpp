@@ -1,10 +1,13 @@
 #include <bitset>
+#include <cmath>
 #include <fstream>
 #include <iostream>
+#include <stdlib.h>
 #include <string>
 #include <vector>
 
-#include <opencv2/opencv.hpp>
+#include <opencv2/core.hpp>
+#include <opencv2/highgui.hpp>
 
 typedef uint8_t pixel_t;
 typedef std::vector< std::vector<pixel_t> > Vec2i;
@@ -61,40 +64,120 @@ double computeGaussianWeight(int x, int y, double sigma)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-Vec2d getGaussianSmoothingMask(const double sigma)
+class ImageProcessing
 {
-  // Compute mask size
+public:
+  ImageProcessing(Vec2i, double);
+
+  Vec2i img_src_;
+  Vec2d img_blur_, img_Ix_, img_Iy_, img_I_, img_nms_, img_hys_;
+  Vec2d gauss_mask_;
+  double sigma_;
+
+private:
+  void conv2d(const Vec2d, const Vec2d, Vec2d&);
+  Vec2d mask_dx_ = {{-1, -2, -1},
+                   { 0,  0,  0},
+                   { 1,  2,  1}};
+  Vec2d mask_dy_ = {{-1, 0, 1},
+                   {-2, 0, 2},
+                   {-1, 0, 1}};
+  double const pi = 3.14159265359;
+};
+
+ImageProcessing::ImageProcessing(Vec2i img, double sigma):
+  img_src_(img),
+  sigma_(sigma)
+{
+  ////////////////////////////////////////
+  //         Gaussian Smoothing         //
+  ////////////////////////////////////////
+
+  // Comput mask size
   if(sigma <= 0)
   {
     std::cout << "ERROR: invalid sigma value!" << std::endl;
     exit(-1);
   }
-  int mask_size = ceil(5 * sigma);
+  int mask_size = ceil(5 * sigma_);
   if(mask_size < 3) mask_size = 3;
   else if(mask_size % 2 == 0) mask_size += 1;
   int mask_center = (mask_size - 1) / 2;
 
-  // Compute mask values
-  Vec2d gauss_mask;
-  gauss_mask.resize(mask_size, std::vector<double>(mask_size, 0));
+  // Compute mask value
+  gauss_mask_.resize(mask_size, std::vector<double>(mask_size, 0));
   double weight_sum = 0;
   for(int x = 0; x < mask_size; x++)
     for(int y = 0; y < mask_size; y++)
     {
-      gauss_mask[x][y] = computeGaussianWeight(x - mask_center, y - mask_center, sigma);
-      weight_sum += gauss_mask[x][y];
+      gauss_mask_[x][y] = computeGaussianWeight(x - mask_center, y - mask_center, sigma_);
+      weight_sum += gauss_mask_[x][y];
     }
   
-  // Normalize
+  // Normalize mask
   for(int x = 0; x < mask_size; x++)
     for(int y = 0; y < mask_size; y++)
-      gauss_mask[x][y] /= weight_sum;
+      gauss_mask_[x][y] /= weight_sum;
+    
+  // Conv2d
+  conv2d(Vec2iToVec2d(img_src_), gauss_mask_, img_blur_);
+  
+  ////////////////////////////////////////
+  //        Compute Derivatives         //
+  ////////////////////////////////////////
 
-  return gauss_mask;
+  conv2d(img_blur_, mask_dx_, img_Ix_);  // dx
+  conv2d(img_blur_, mask_dy_, img_Iy_);  // dy
+  img_I_.resize(img_Ix_.size(), std::vector<double>(img_Ix_[0].size(), 0));
+  for(uint16_t x = 0; x < img_I_.size(); x++)
+    for(uint16_t y = 0; y < img_I_[0].size(); y++)
+    {
+      double Ix = img_Ix_[x][y];
+      double Iy = img_Iy_[x][y];
+      img_I_[x][y] = sqrt((Ix * Ix + Iy * Iy) / 2); // sqrt(dx^2 + dy^2)
+    }
+
+  ////////////////////////////////////////
+  //       Non-Maximum Suppression      //
+  ////////////////////////////////////////
+  
+  // note that this will reduce dimensions of img by (2, 2)
+  img_nms_.resize(img_I_.size() - 2, std::vector<double>(img_I_[0].size() - 2, 0));
+  for(uint16_t x = 1, x_end = img_I_.size() - 1; x < x_end; x++) 
+    for(uint16_t y = 1, y_end = img_I_[0].size() - 1; y < y_end; y++)
+    {
+      // Compute the gradient direction
+      double grad_angle = atan2(img_Iy_[x][y], img_Ix_[x][y]) * 180 / pi; // (-180, 180], note that x->down, y->right
+      
+      // TODO: Add smoothing before suppressing
+      // Process
+      int code = abs(int(round(grad_angle / 45.0))) % 4;
+      switch(code)
+      {
+        case 0: // up <-> down
+          if(img_I_[x][y] > img_I_[x-1][y] && img_I_[x][y] > img_I_[x+1][y])
+            img_nms_[x-1][y-1] = img_I_[x][y];
+          break;
+        case 1: // up-left <-> down-right
+          if(img_I_[x][y] > img_I_[x-1][y-1] && img_I_[x][y] > img_I_[x+1][y+1])
+            img_nms_[x-1][y-1] = img_I_[x][y];
+          break;
+        case 2: // left <-> right
+          if(img_I_[x][y] > img_I_[x][y-1] && img_I_[x][y] > img_I_[x][y+1])
+            img_nms_[x-1][y-1] = img_I_[x][y];
+          break;
+        case 3: // up-right <-> down-left
+          if(img_I_[x][y] > img_I_[x-1][y+1] && img_I_[x][y] > img_I_[x+1][y-1])
+            img_nms_[x-1][y-1] = img_I_[x][y];
+          break;
+        default: 
+          std::cout << "ERROR: grad_angle_code = " << code << std::endl;
+          exit(-1);
+      }
+    }
 }
 
-///////////////////////////////////////////////////////////////////////////////
-void conv2d(const Vec2d input, const Vec2d mask, Vec2d &output)
+void ImageProcessing::conv2d(const Vec2d input, const Vec2d mask, Vec2d &output)
 {
   if(input.empty())
   {
@@ -121,29 +204,6 @@ void conv2d(const Vec2d input, const Vec2d mask, Vec2d &output)
         for(uint16_t mask_y = 0; mask_y < mask[0].size(); mask_y++)
           output[x][y] += input[x + mask_x][y + mask_y] * mask[mask_x][mask_y];
   return;
-}
-
-///////////////////////////////////////////////////////////////////////////////
-Vec2d computeImageDerivatives(const Vec2d input)
-{
-  Vec2d img_dx, img_dy, img_I;
-  Vec2d mask_dx = {{-1, -2, -1},
-                   { 0,  0,  0},
-                   { 1,  2,  1}};
-  Vec2d mask_dy = {{-1, 0, 1},
-                   {-2, 0, 2},
-                   {-1, 0, 1}};
-  conv2d(input, mask_dx, img_dx);
-  conv2d(input, mask_dy, img_dy);
-  img_I.resize(img_dx.size(), std::vector<double>(img_dx[0].size(), 0));
-  for(uint16_t x = 0; x < img_I.size(); x++)
-    for(uint16_t y = 0; y < img_I[0].size(); y++)
-    {
-      double Ix = img_dx[x][y];
-      double Iy = img_dy[x][y];
-      img_I[x][y] = sqrt(Ix * Ix + Iy * Iy);
-    }
-  return img_I;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -178,32 +238,32 @@ int main(int argc, char** argv)
       img_src[x][y] = pixel_value;
     }
 
-  // Gaussian Smoothing
-  double sigma = std::stod(argv[2]);
-  printf("Standard deviation: %lf\n", sigma);
-  Vec2d gauss_mask = getGaussianSmoothingMask(sigma);
-  Vec2d img_smoothed;
-  conv2d(Vec2iToVec2d(img_src), gauss_mask, img_smoothed);
+  // Call processing
+  ImageProcessing imgproc(img_src, std::stod(argv[2]));
 
+  printf("Standard deviation: %lf\n", imgproc.sigma_);
   std::cout << "Guassian smoothing using mask: " << std::endl;
-  for(uint16_t i = 0; i < gauss_mask.size(); i++)
+  for(uint16_t i = 0; i < imgproc.gauss_mask_.size(); i++)
   {
-    for(uint16_t j = 0; j < gauss_mask.size(); j++)
-      printf("  %.8lf", gauss_mask[i][j]);
+    for(uint16_t j = 0; j < imgproc.gauss_mask_.size(); j++)
+      printf("  %.8lf", imgproc.gauss_mask_[i][j]);
     std::cout << std::endl;
   }
-
-  // Compute Derivatives
-  Vec2d img_derivative = computeImageDerivatives(img_smoothed);
 
   // Visualize using OpenCV
   printf("Visualizing...\n");
   cv::namedWindow("Source", cv::WINDOW_AUTOSIZE);
   cv::namedWindow("Gaussian Smoothed", cv::WINDOW_AUTOSIZE);
   cv::namedWindow("Derivative", cv::WINDOW_AUTOSIZE);
-  cv::imshow("Source", VecToMat(img_src));
-  cv::imshow("Gaussian Smoothed", VecToMat(img_smoothed));
-  cv::imshow("Derivative", VecToMat(img_derivative));
+  cv::namedWindow("Thin Edge", cv::WINDOW_AUTOSIZE);
+  cv::Mat cv_src = VecToMat(img_src);
+  cv::Mat cv_blur = VecToMat(imgproc.img_blur_);
+  cv::Mat cv_I = VecToMat(imgproc.img_I_);
+  cv::Mat cv_nms = VecToMat(imgproc.img_nms_);
+  cv::imshow("Source", cv_src);
+  cv::imshow("Gaussian Smoothed", cv_blur);
+  cv::imshow("Derivative", cv_I);
+  cv::imshow("Thin Edge", cv_nms);
 
   cv::waitKey(-1);
   return 0;
