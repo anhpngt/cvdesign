@@ -179,14 +179,9 @@ ImageProcessing::ImageProcessing(Vec2i img, double sigma):
 
 void ImageProcessing::conv2d(const Vec2d input, const Vec2d mask, Vec2d &output)
 {
-  if(input.empty())
+  if(input.empty() || mask.empty())
   {
     std::cout << "Empty input matrix in 2D convolution!" << std::endl;
-    exit(-1);
-  }
-  if(mask.empty())
-  {
-    std::cout << "Empty mask matrix in 2D convolution!" << std::endl;
     exit(-1);
   }
 
@@ -251,19 +246,28 @@ int main(int argc, char** argv)
   }
 
   // Visualize using OpenCV
-  printf("Visualizing...\n");
-  cv::namedWindow("Source", cv::WINDOW_AUTOSIZE);
-  cv::namedWindow("Gaussian Smoothed", cv::WINDOW_AUTOSIZE);
-  cv::namedWindow("Derivative", cv::WINDOW_AUTOSIZE);
-  cv::namedWindow("Thin Edge", cv::WINDOW_AUTOSIZE);
+  printf("Visualizing using OpenCV...\n");
+  cv::namedWindow("Canny Edge Detector", cv::WINDOW_AUTOSIZE);
+
   cv::Mat cv_src = VecToMat(img_src);
   cv::Mat cv_blur = VecToMat(imgproc.img_blur_);
   cv::Mat cv_I = VecToMat(imgproc.img_I_);
   cv::Mat cv_nms = VecToMat(imgproc.img_nms_);
-  cv::imshow("Source", cv_src);
-  cv::imshow("Gaussian Smoothed", cv_blur);
-  cv::imshow("Derivative", cv_I);
-  cv::imshow("Thin Edge", cv_nms);
+  int blur_padding = (cv_src.cols - cv_blur.cols) / 2;
+  int i_padding = (cv_src.cols - cv_I.cols) / 2;
+  int nms_padding = (cv_src.cols - cv_nms.cols) / 2;
+  cv::copyMakeBorder(cv_blur, cv_blur, blur_padding, blur_padding, blur_padding, blur_padding, cv::BORDER_CONSTANT, cv::Scalar::all(0));
+  cv::copyMakeBorder(cv_I, cv_I, i_padding, i_padding, i_padding, i_padding, cv::BORDER_CONSTANT, cv::Scalar::all(0));
+  cv::copyMakeBorder(cv_nms, cv_nms, nms_padding, nms_padding, nms_padding, nms_padding, cv::BORDER_CONSTANT, cv::Scalar::all(0));
+
+  cv::Mat visual;
+  std::vector<cv::Mat> output_mat;
+    output_mat.push_back(cv_src);
+    output_mat.push_back(cv_blur);
+    output_mat.push_back(cv_I);
+    output_mat.push_back(cv_nms);
+  cv::hconcat(output_mat, visual);
+  cv::imshow("Canny Edge Detector", visual);
 
   cv::waitKey(-1);
   return 0;
