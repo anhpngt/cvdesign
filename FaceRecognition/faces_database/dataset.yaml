@@ -1,0 +1,20 @@
+%YAML:1.0
+
+Name: TuanAnh
+ImageNumber: 5
+
+Image1.Location: "/home/echo/cvdesign/FaceRecognition/faces_database/TuanAnh_1.jpg"
+Image1.Detail: 1
+
+Image2.Location: "/home/echo/cvdesign/FaceRecognition/faces_database/TuanAnh_2.jpg"
+Image2.Detail: 1
+
+Image3.Location: "/home/echo/cvdesign/FaceRecognition/faces_database/TuanAnh_3.jpg"
+Image3.Detail: 0
+
+Image4.Location: "/home/echo/cvdesign/FaceRecognition/faces_database/TuanAnh_4.jpg"
+Image4.Detail: 0
+
+Image5.Location: "/home/echo/cvdesign/FaceRecognition/faces_database/TuanAnh_5.jpg"
+Image5.Detail: 1
+

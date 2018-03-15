@@ -1,2 +1,4 @@
 .vscode
 CannyEdgeDesign/build/
+FaceRecognition/build/
+FaceRecognition/main(ncc method facedetect).cpp
