@@ -9,56 +9,76 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include <opencv2/face.hpp>
+
+#define HEIGHT 100
+#define WIDTH  100
 
 using namespace std;
 
-static void read_database(const std::string& file_name, std::vector<cv::Mat>& images, std::vector<int>& labels, char sep = ',')
+static int read_database(const std::string& file_name, std::vector<cv::Mat>& images, std::vector<int>& labels, char sep = ',')
 {
-  std::
+  images.clear();
+  labels.clear();
+
+  std::ifstream file(file_name, std::ifstream::in);
+  if(!file)
+  {
+    cout << "ERROR: Cannot read file: " << file_name << endl;
+    return 0;
+  }
+
+  std::string line, path_str, label_str;
+  while(getline(file, line))
+  {
+    std::stringstream liness(line);
+    getline(liness, path_str, sep);
+    getline(liness, label_str);
+    if(!path_str.empty() && !label_str.empty())
+    {
+      cv::Mat tmp = cv::imread(path_str, 0);
+      if(tmp.cols != WIDTH || tmp.rows != HEIGHT)
+      {
+        cout << "ERROR: Image of invalid dimension " << tmp.size() << " at " << path_str << endl;
+        return 0;
+      }
+      images.push_back(tmp);
+      labels.push_back(std::stoi(label_str));
+    }
+    else
+    {
+      cout << "Invalid data at: " << path_str << endl;
+    }
+  }
+
+  return 1;
 }
 
 int main(int argc, char** argv)
 {
-  if(argc < 2)
+  if(argc < 3)
   {
     cout << "ERROR: Missing input argument." << endl;
-    cout << "Usage: ./trainEigenfaces \"CONFIGURATION_FILE.csv\"" << endl;
+    cout << "Usage: ./trainEigenfaces IMAGE_INDEX_FILE.csv OUTPUT_DIR" << endl;
     return(-1);
   }
 
   std::vector<cv::Mat> images;
   std::vector<int> labels;
-  read_database(argv[1], images, labels);
+  if(!read_database(argv[1], images, labels)) return(-1);
 
-  // Get all training images
-  std::vector<cv::Mat> image_database;
-  std::vector<cv::Mat> flattened_data;
-  cv::Mat visual;
-  for(int i = 1; i <= image_number; i++)
+  if(images.size() < 2)
   {
-    std::string file_name;
-    fs["Image" + std::to_string(i) + ".Location"] >> file_name;
-    cv::Mat tmp = cv::imread(file_name);
-    if(tmp.cols != 100 || tmp.rows != 100)
-    {
-      cout << "ERROR: Invalid image size ([" << tmp.cols << ", " << tmp.rows << "])! @ " << file_name << endl;
-      return(-1);
-    }
-    cv::Mat tmp_gray;
-    cv::cvtColor(tmp, tmp_gray, cv::COLOR_BGR2GRAY);
-    image_database.push_back(tmp_gray);
-
-    // Flatten
-    tmp_gray = tmp_gray.reshape(1, 1);
-    flattened_data.push_back(tmp_gray);
+    cout << "ERROR: Insufficient data" << endl;
+    return(-1);
   }
-  cv::Mat fX;
-  cv::vconcat(flattened_data, fX);
-  fX.convertTo(fX, CV_32F);
-  
-  cv::hconcat(image_database, visual);
-  cv::imshow("img", visual);
-  cv::waitKey(-1);
 
+  cv::Ptr<cv::face::EigenFaceRecognizer> model = cv::face::EigenFaceRecognizer::create();
+  model->train(images, labels);
+
+  // Saved trained model
+  std::string model_filename = std::string(argv[2]) + "/eigenfaces.yaml";
+  model->save(model_filename);
+  cout << "Training successful! Model is saved at: " << model_filename << endl;
   return 0;
 }
