@@ -1,4 +1,11 @@
 .vscode
 CannyEdgeDesign/build/
+
 FaceRecognition/build/
 FaceRecognition/main(ncc method facedetect).cpp
+FaceRecognition/faces_database
+FaceRecognition/eigenfaces_models/eigenfaces_220318.yaml
+
+HandGestureRecognition/simena86/
+HandGestureRecognition/victordibia/
+

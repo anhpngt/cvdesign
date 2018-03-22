@@ -39,8 +39,9 @@ static int read_database(const std::string& file_name, std::vector<cv::Mat>& ima
       cv::Mat tmp = cv::imread(path_str, 0);
       if(tmp.cols != WIDTH || tmp.rows != HEIGHT)
       {
-        cout << "ERROR: Image of invalid dimension " << tmp.size() << " at " << path_str << endl;
-        return 0;
+        cout << "WARN: Image of invalid dimension " << tmp.size() << " at " << path_str << endl;
+        cv::resize(tmp, tmp, cv::Size(100, 100));
+        // return 0;
       }
       images.push_back(tmp);
       labels.push_back(std::stoi(label_str));
@@ -77,7 +78,7 @@ int main(int argc, char** argv)
   model->train(images, labels);
 
   // Saved trained model
-  std::string model_filename = std::string(argv[2]) + "/eigenfaces.yaml";
+  std::string model_filename = std::string(argv[2]) + "/eigenfaces_220318.yaml";
   model->save(model_filename);
   cout << "Training successful! Model is saved at: " << model_filename << endl;
   return 0;

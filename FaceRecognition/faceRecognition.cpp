@@ -21,7 +21,7 @@ int main(int argc, char** argv)
 
   // Loading the Face Recognition model
   cv::Ptr<cv::face::EigenFaceRecognizer> model = cv::face::EigenFaceRecognizer::create();
-  model->read("/home/echo/cvdesign/FaceRecognition/eigenfaces_models/eigenfaces.yaml");
+  model->read("/home/echo/cvdesign/FaceRecognition/eigenfaces_models/eigenfaces_220318.yaml");
 
   // Loading camera stream
   cv::VideoCapture cap(0);
@@ -59,8 +59,28 @@ int main(int argc, char** argv)
       cv::resize(face_mat, face_mat, cv::Size(WIDTH, HEIGHT));
       int label_;
       double confidence_;
+      std::string face_name_;
       model->predict(face_mat, label_, confidence_);
-      std::string label_str = std::to_string(label_) + " / " + std::to_string(confidence_);
+
+      switch(label_)
+      {
+        case 100:
+          face_name_ = "Chi Siong"; 
+          break;
+        case 101: 
+          face_name_ = "Kah Yooi";  
+          break;
+        case 102: 
+          face_name_ = "Samuel";    
+          break;
+        case 103: 
+          face_name_ = "Tuan Anh";
+          break;
+        default: face_name_ = std::to_string(label_);
+      }
+      std::string label_str = face_name_ + " / " + std::to_string(confidence_);
+
+      
 
       // Visualize
       cv::rectangle(frame, faces[i], cv::Scalar(0, 255, 0), 2, 8, 0);
