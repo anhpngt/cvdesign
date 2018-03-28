@@ -32,7 +32,11 @@ Vec2i Vec2dToVec2i(const Vec2d input)
     for(uint16_t y = 0; y < output[0].size(); y++)
     {
       if(input[x][y] > 255) output[x][y] = 255;
-      else if (input[x][y] < 0) output[x][y] = 0;
+      else if (input[x][y] < 0) 
+      {
+        printf("pixel (%d, %d) of value %.2lf", x, y, input[x][y]);
+        output[x][y] = 0;
+      }
       else output[x][y] = (pixel_t)input[x][y];
     }
   return output;
@@ -58,30 +62,31 @@ cv::Mat VecToMat(const Vec2d img_vec)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-double computeGaussianWeight(int x, int y, double sigma)
-{
-  return exp(-(double)(x * x + y * y) / (2.0 * sigma * sigma));
-}
-
-///////////////////////////////////////////////////////////////////////////////
 class ImageProcessing
 {
 public:
   ImageProcessing(Vec2i, double);
 
   Vec2i img_src_;
-  Vec2d img_blur_, img_Ix_, img_Iy_, img_I_, img_nms_, img_hys_;
+  Vec2d img_blur_, img_Ix_, img_Iy_, img_I_, img_nms_;
   Vec2d gauss_mask_;
   double sigma_;
 
 private:
   void conv2d(const Vec2d, const Vec2d, Vec2d&);
-  Vec2d mask_dx_ = {{-1, -2, -1},
-                   { 0,  0,  0},
-                   { 1,  2,  1}};
-  Vec2d mask_dy_ = {{-1, 0, 1},
-                   {-2, 0, 2},
-                   {-1, 0, 1}};
+  double computeGaussianWeight(int x, int y, double sigma);
+  // Vec2d mask_dx_ = {{-1, -2, -1},
+  //                   { 0,  0,  0},
+  //                   { 1,  2,  1}};
+  // Vec2d mask_dy_ = {{-1,  0,  1},
+  //                   {-2,  0,  2},
+  //                   {-1,  0,  1}}; // easier to visualize
+  Vec2d mask_dx_ = {{-0.125, -0.25, -0.125},
+                    { 0,         0,      0},
+                    { 0.125,  0.25,  0.125}};
+  Vec2d mask_dy_ = {{-0.125,     0,  0.125},
+                    {-0.25,      0,   0.25},
+                    {-0.125,     0,  0.125}};
   double const pi = 3.14159265359;
 };
 
@@ -113,6 +118,15 @@ ImageProcessing::ImageProcessing(Vec2i img, double sigma):
       gauss_mask_[x][y] = computeGaussianWeight(x - mask_center, y - mask_center, sigma_);
       weight_sum += gauss_mask_[x][y];
     }
+
+  std::cout << "Standard deviation: " << sigma_ << std::endl;
+  std::cout << "Guassian smoothing using mask: " << std::endl;
+  for(uint16_t i = 0; i < gauss_mask_.size(); i++)
+  {
+    for(uint16_t j = 0; j < gauss_mask_.size(); j++)
+      printf("  %.8lf", gauss_mask_[i][j]);
+    std::cout << std::endl;
+  }
   
   // Normalize mask
   for(int x = 0; x < mask_size; x++)
@@ -141,6 +155,36 @@ ImageProcessing::ImageProcessing(Vec2i img, double sigma):
   //       Non-Maximum Suppression      //
   ////////////////////////////////////////
   
+  // // Gradient smoothing with moving average of 3 pixels
+  // for(uint16_t x = 1, x_end = img_I_.size() - 1; x < x_end; x++) 
+  //   for(uint16_t y = 1, y_end = img_I_[0].size() - 1; y < y_end; y++)
+  //   {
+  //     // Compute the gradient direction
+  //     double grad_angle = atan2(img_Iy_[x][y], img_Ix_[x][y]) * 180 / pi; // (-180, 180], note that x->down, y->right
+      
+  //     // Process
+  //     int code = abs(int(round(grad_angle / 45.0))) % 4;
+  //     switch(code)
+  //     {
+  //       case 0: // up <-> down
+  //         img_I_[x][y] = (img_I_[x-1][y] + img_I_[x][y] + img_I_[x+1][y]) / 3.0;
+  //         break;
+  //       case 1: // up-left <-> down-right
+  //         img_I_[x][y] = (img_I_[x+1][y+1] + img_I_[x][y] + img_I_[x-1][y-1]) / 3.0;
+  //         break;
+  //       case 2: // left <-> right
+  //         img_I_[x][y] = (img_I_[x][y-1] + img_I_[x][y] + img_I_[x][y+1]) / 3.0;
+  //         break;
+  //       case 3: // up-right <-> down-left
+  //         img_I_[x][y] = (img_I_[x-1][y+1] + img_I_[x][y] + img_I_[x+1][y-1]) / 3.0;
+  //         break;
+  //       default: 
+  //         std::cout << "ERROR: grad_angle_code = " << code << std::endl;
+  //         exit(-1);
+  //     }
+  //   }
+
+  // Non-Maximum Suppression
   // note that this will reduce dimensions of img by (2, 2)
   img_nms_.resize(img_I_.size() - 2, std::vector<double>(img_I_[0].size() - 2, 0));
   for(uint16_t x = 1, x_end = img_I_.size() - 1; x < x_end; x++) 
@@ -149,7 +193,6 @@ ImageProcessing::ImageProcessing(Vec2i img, double sigma):
       // Compute the gradient direction
       double grad_angle = atan2(img_Iy_[x][y], img_Ix_[x][y]) * 180 / pi; // (-180, 180], note that x->down, y->right
       
-      // TODO: Add smoothing before suppressing
       // Process
       int code = abs(int(round(grad_angle / 45.0))) % 4;
       switch(code)
@@ -175,6 +218,43 @@ ImageProcessing::ImageProcessing(Vec2i img, double sigma):
           exit(-1);
       }
     }
+
+  ////////////////////////////////////////
+  //           Post-processing          //
+  ////////////////////////////////////////
+
+  // Normalize pixel intensity of img_I_ and img_nms_ for visualization
+  double brightest_pixel_val = 0;
+  for(uint16_t x = 1, x_end = img_I_.size() - 1; x < x_end; x++) 
+    for(uint16_t y = 1, y_end = img_I_[0].size() - 1; y < y_end; y++)
+    {
+      if(img_I_[x][y] > brightest_pixel_val)
+        brightest_pixel_val = img_I_[x][y];
+    }
+  double mul_val = 255.0 / brightest_pixel_val;
+  std::cout << "Multiplying img_I_ by " << mul_val << " to visualize" << std::endl;
+  for(uint16_t x = 1, x_end = img_I_.size() - 1; x < x_end; x++) 
+    for(uint16_t y = 1, y_end = img_I_[0].size() - 1; y < y_end; y++)
+    {
+      img_I_[x][y] = img_I_[x][y] * mul_val;
+    }
+  
+  brightest_pixel_val = 0;
+  for(uint16_t x = 1, x_end = img_nms_.size() - 1; x < x_end; x++) 
+    for(uint16_t y = 1, y_end = img_nms_[0].size() - 1; y < y_end; y++)
+    {
+      if(img_nms_[x][y] > brightest_pixel_val)
+        brightest_pixel_val = img_nms_[x][y];
+    }
+  mul_val = 255.0 / brightest_pixel_val;
+  std::cout << "Multiplying img_nms_ by " << mul_val << " to visualize" << std::endl;
+  for(uint16_t x = 1, x_end = img_nms_.size() - 1; x < x_end; x++) 
+    for(uint16_t y = 1, y_end = img_nms_[0].size() - 1; y < y_end; y++)
+    {
+      img_nms_[x][y] = img_nms_[x][y] * mul_val;
+    }
+  
+  std::cout << "Finished processing image.\n" << std::endl;
 }
 
 void ImageProcessing::conv2d(const Vec2d input, const Vec2d mask, Vec2d &output)
@@ -199,6 +279,12 @@ void ImageProcessing::conv2d(const Vec2d input, const Vec2d mask, Vec2d &output)
         for(uint16_t mask_y = 0; mask_y < mask[0].size(); mask_y++)
           output[x][y] += input[x + mask_x][y + mask_y] * mask[mask_x][mask_y];
   return;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+double ImageProcessing::computeGaussianWeight(int x, int y, double sigma)
+{
+  return exp(-(double)(x * x + y * y) / (2.0 * sigma * sigma));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -236,23 +322,16 @@ int main(int argc, char** argv)
   // Call processing
   ImageProcessing imgproc(img_src, std::stod(argv[2]));
 
-  printf("Standard deviation: %lf\n", imgproc.sigma_);
-  std::cout << "Guassian smoothing using mask: " << std::endl;
-  for(uint16_t i = 0; i < imgproc.gauss_mask_.size(); i++)
-  {
-    for(uint16_t j = 0; j < imgproc.gauss_mask_.size(); j++)
-      printf("  %.8lf", imgproc.gauss_mask_[i][j]);
-    std::cout << std::endl;
-  }
-
   // Visualize using OpenCV
-  printf("Visualizing using OpenCV...\n");
+  printf("Finished! Visualizing using OpenCV...\n");
   cv::namedWindow("Canny Edge Detector", cv::WINDOW_AUTOSIZE);
 
   cv::Mat cv_src = VecToMat(img_src);
   cv::Mat cv_blur = VecToMat(imgproc.img_blur_);
   cv::Mat cv_I = VecToMat(imgproc.img_I_);
   cv::Mat cv_nms = VecToMat(imgproc.img_nms_);
+
+  // Padding zeros to image edges to concatnate
   int blur_padding = (cv_src.cols - cv_blur.cols) / 2;
   int i_padding = (cv_src.cols - cv_I.cols) / 2;
   int nms_padding = (cv_src.cols - cv_nms.cols) / 2;
@@ -268,6 +347,7 @@ int main(int argc, char** argv)
     output_mat.push_back(cv_nms);
   cv::hconcat(output_mat, visual);
   cv::imshow("Canny Edge Detector", visual);
+  cv::imwrite("processed_image.jpg", visual);
 
   cv::waitKey(-1);
   return 0;
