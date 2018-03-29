@@ -15,13 +15,20 @@ using namespace std;
 
 int main(int argc, char** argv)
 {
+  if(argc < 2)
+  {
+    cout << "ERROR: Missing input database!" << endl;
+    cout << "Usage: ./faceRecognition EIGENFACE_DATA.yaml" << endl;
+    exit(-1);
+  }
   // Loading the Face Detection model
   cv::CascadeClassifier face_detector;
   face_detector.load("/home/echo/cvdesign/FaceRecognition/haarcascades_models/haarcascade_frontalface_alt2.xml");
 
   // Loading the Face Recognition model
+  cout << "Reading database at " << argv[1] << endl;
   cv::Ptr<cv::face::EigenFaceRecognizer> model = cv::face::EigenFaceRecognizer::create();
-  model->read("/home/echo/cvdesign/FaceRecognition/eigenfaces_models/eigenfaces_220318.yaml");
+  model->read(argv[1]);
 
   // Loading camera stream
   cv::VideoCapture cap(0);
