@@ -2,11 +2,7 @@
 #include <vector>
 #include <string>
 
-#include <opencv2/core/core.hpp>
-#include <opencv2/objdetect/objdetect.hpp>
-#include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/highgui/highgui.hpp>
-#include <opencv2/face.hpp>
+#include <opencv2/opencv.hpp>
 
 #define HEIGHT 100
 #define WIDTH  100
@@ -15,20 +11,27 @@ using namespace std;
 
 int main(int argc, char** argv)
 {
-  if(argc < 2)
-  {
-    cout << "ERROR: Missing input database!" << endl;
-    cout << "Usage: ./faceRecognition EIGENFACE_DATA.yaml" << endl;
-    exit(-1);
-  }
   // Loading the Face Detection model
+  std::string detection_model_file = "/home/echo/cvdesign/FaceRecognition/haarcascades_models/haarcascade_frontalface_alt2.xml";
+  cout << "Reading detection model at: " << detection_model_file << endl;
   cv::CascadeClassifier face_detector;
-  face_detector.load("/home/echo/cvdesign/FaceRecognition/haarcascades_models/haarcascade_frontalface_alt2.xml");
+  face_detector.load(detection_model_file);
 
-  // Loading the Face Recognition model
-  cout << "Reading database at " << argv[1] << endl;
-  cv::Ptr<cv::face::EigenFaceRecognizer> model = cv::face::EigenFaceRecognizer::create();
-  model->read(argv[1]);
+  // Loading the Face Recognition model: data mean, eigen values/vector/faces
+  std::string recognition_model_file = "/home/echo/cvdesign/FaceRecognition/eigenfaces_models/eigenfaces_300318.yaml";
+  cout << "Reading recognition model at " << recognition_model_file << endl;
+  cv::FileStorage efs(recognition_model_file, cv::FileStorage::READ);
+  cv::Mat m_labels(0, 0, CV_64FC1);                       // [N x 1]
+  cv::Mat m_mean(0, 0, CV_64FC1);                         // [10000 x 1]
+  cv::Mat m_eigenvalues(0, 0, CV_64FC1);                  // [200 x 1]
+  cv::Mat m_eigenvectors(0, 0, CV_64FC1);                 // [200 x 10000] each eigenvector is stored as row
+  cv::Mat m_eigenfaces(0, 0, CV_64FC1);                   // [200 x N] each eigenface is stored as col
+  efs["labels"] >> m_labels;
+  efs["mean"] >> m_mean;
+  efs["eigenvalues"] >> m_eigenvalues;
+  efs["eigenvectors"] >> m_eigenvectors;
+  efs["eigenfaces"] >> m_eigenfaces;
+  efs.release();
 
   // Loading camera stream
   cv::VideoCapture cap(0);
@@ -58,17 +61,37 @@ int main(int argc, char** argv)
     // cv::resize(frame_gray, frame_gray, cv::Size(1280, 960));
 
     std::vector<cv::Rect> faces;
-    face_detector.detectMultiScale(frame_gray, faces, 1.1, 3, 0 | cv::CASCADE_SCALE_IMAGE, cv::Size(100, 100));
+    face_detector.detectMultiScale(frame_gray, faces, 1.1, 3, 0 | cv::CASCADE_SCALE_IMAGE, cv::Size(30, 30));
+    // Recognition on detected faces
     for(size_t i = 0, i_end = faces.size(); i < i_end; i++)
     {
-      // Recognition on detected faces
+      // Apply PCA
       cv::Mat face_mat = frame_gray(faces[i]);
       cv::resize(face_mat, face_mat, cv::Size(WIDTH, HEIGHT));
+      
+      cv::Mat m_face = face_mat.reshape(1, 1);
+      cv::transpose(m_face, m_face);                      // [10000 x 1] now
+      m_face.convertTo(m_face, CV_64FC1);
+      m_face = m_face - m_mean;
+      cv::Mat m_face_pca = m_eigenvectors * m_face;       // [200 x 1] face under pca representation
+
+      // Do NCC
       int label_;
       double confidence_;
       std::string face_name_;
-      model->predict(face_mat, label_, confidence_);
 
+      cv::Mat m_face_pca_spreaded = cv::repeat(m_face_pca, 1, m_eigenfaces.cols); // spread to [200 x N] for matrix subtraction
+      cv::Mat m_ncc = m_eigenfaces - m_face_pca_spreaded; // [200 x N]
+      cv::multiply(m_ncc, m_ncc, m_ncc);                  // [200 x N]
+      cv::reduce(m_ncc, m_ncc, 0, cv::REDUCE_SUM);        // [1 x N] sum col-wise
+      cv::Mat sorted_idx;
+      cv::sortIdx(m_ncc, sorted_idx, cv::SORT_EVERY_ROW | cv::SORT_DESCENDING);
+
+      label_ = m_labels.at<int>(sorted_idx.at<int>(0, 0), 0);
+      double score1 = m_ncc.at<double>(0, sorted_idx.at<int>(0, 0));
+      double score2 = m_ncc.at<double>(0, sorted_idx.at<int>(0, 1));
+      confidence_ = score2 / score1;
+      
       switch(label_)
       {
         case 100:
@@ -85,9 +108,7 @@ int main(int argc, char** argv)
           break;
         default: face_name_ = std::to_string(label_);
       }
-      std::string label_str = face_name_ + " / " + std::to_string(confidence_);
-
-      
+      std::string label_str = face_name_ + "(" + std::to_string(confidence_) + ")";
 
       // Visualize
       cv::rectangle(frame, faces[i], cv::Scalar(0, 255, 0), 2, 8, 0);
@@ -97,7 +118,11 @@ int main(int argc, char** argv)
     // Display
     cv::imshow("image", frame);
     int key = cv::waitKey(10);
-    if(key == 'q') break;
+    if(key == 'q')
+    {
+      cout << "User exit." << endl;
+      break;
+    }
   }
 
   return(0);

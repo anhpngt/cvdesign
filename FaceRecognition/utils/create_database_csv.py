@@ -40,3 +40,4 @@ for dir_item in sub_dir:
 
 data = pd.DataFrame({'image': output_image_paths, 'label': output_labels})
 data.to_csv(os.path.join(database_dir, 'database.csv'), header=None, index=None)
+print('Done.')

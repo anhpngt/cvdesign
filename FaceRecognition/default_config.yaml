@@ -1,0 +1,16 @@
+%YAML:1.0
+---
+Image.IndexFile: "/home/echo/cvdesign/FaceRecognition/faces_database/database_test.csv"
+
+# if false, values from Eigen.ReducedModel will be used instead
+Eigen.Recompute: false
+# Required for Eigen.Recompute == true
+Eigen.RequiredSize: 200
+# Required for Eigen.Recompute == false
+Eigen.FullModel: "/home/echo/cvdesign/FaceRecognition/eigen_models/eigen_full.yaml"
+Eigen.ReducedModel: "/home/echo/cvdesign/FaceRecognition/eigen_models/eigen.yaml"
+
+Output.Directory: "."
+Output.EigenfacesModel: "/home/echo/cvdesign/FaceRecognition/eigenfaces_models/eigenfaces_300318.yaml"
+Output.FullModel: "./eigen_full_new.yaml"
+Output.ReducedModel: "./eigen_new.yaml"

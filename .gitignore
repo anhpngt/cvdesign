@@ -2,9 +2,11 @@
 CannyEdgeDesign/build/
 
 FaceRecognition/build/
-FaceRecognition/main(ncc method facedetect).cpp
-FaceRecognition/faces_database
-FaceRecognition/eigenfaces_models/eigenfaces_220318.yaml
+FaceRecognition/faces_database/
+FaceRecognition/eigen_models/
+FaceRecognition/eigenfaces_models/
+FaceRecognition/opencv_eigenfaces_models/
+/FaceRecognition/haarcascades_models/
 
 HandGestureRecognition/simena86/
 HandGestureRecognition/victordibia/
