@@ -6,7 +6,7 @@ FaceRecognition/faces_database/
 FaceRecognition/eigen_models/
 FaceRecognition/eigenfaces_models/
 FaceRecognition/opencv_eigenfaces_models/
-/FaceRecognition/haarcascades_models/
+FaceRecognition/haarcascades_models/
 
 HandGestureRecognition/simena86/
 HandGestureRecognition/victordibia/
