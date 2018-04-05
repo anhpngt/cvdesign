@@ -18,7 +18,7 @@ int main(int argc, char** argv)
   face_detector.load(detection_model_file);
 
   // Loading the Face Recognition model: data mean, eigen values/vector/faces
-  std::string recognition_model_file = "/home/echo/cvdesign/FaceRecognition/eigenfaces_models/eigenfaces_300318.yaml";
+  std::string recognition_model_file = "/home/echo/cvdesign/FaceRecognition/eigenfaces_models/eigenfaces_040418.yaml";
   cout << "Reading recognition model at " << recognition_model_file << endl;
   cv::FileStorage efs(recognition_model_file, cv::FileStorage::READ);
   cv::Mat m_labels(0, 0, CV_64FC1);                       // [N x 1]
@@ -57,7 +57,7 @@ int main(int argc, char** argv)
     // Detection
     cv::Mat frame_gray;
     cv::cvtColor(frame, frame_gray, cv::COLOR_BGR2GRAY);
-    cv::equalizeHist(frame_gray, frame_gray);
+    // cv::equalizeHist(frame_gray, frame_gray);
     // cv::resize(frame_gray, frame_gray, cv::Size(1280, 960));
 
     std::vector<cv::Rect> faces;
@@ -66,9 +66,13 @@ int main(int argc, char** argv)
     for(size_t i = 0, i_end = faces.size(); i < i_end; i++)
     {
       // Apply PCA
-      cv::Mat face_mat = frame_gray(faces[i]);
+      cv::Mat face_mat = cv::Mat(frame_gray(faces[i]));
       cv::resize(face_mat, face_mat, cv::Size(WIDTH, HEIGHT));
-      
+      if(!face_mat.isContinuous())
+      {
+        cout << "Skipped a discontinuous matrix (" << i << ")" << endl;
+        continue;
+      }
       cv::Mat m_face = face_mat.reshape(1, 1);
       cv::transpose(m_face, m_face);                      // [10000 x 1] now
       m_face.convertTo(m_face, CV_64FC1);
@@ -84,14 +88,12 @@ int main(int argc, char** argv)
       cv::Mat m_ncc = m_eigenfaces - m_face_pca_spreaded; // [200 x N]
       cv::multiply(m_ncc, m_ncc, m_ncc);                  // [200 x N]
       cv::reduce(m_ncc, m_ncc, 0, cv::REDUCE_SUM);        // [1 x N] sum col-wise
-      cv::Mat sorted_idx;
-      cv::sortIdx(m_ncc, sorted_idx, cv::SORT_EVERY_ROW | cv::SORT_DESCENDING);
-
+      cv::Mat sorted_idx;                                 // [1 x N]
+      cv::sortIdx(m_ncc, sorted_idx, cv::SORT_EVERY_ROW | cv::SORT_ASCENDING);
       label_ = m_labels.at<int>(sorted_idx.at<int>(0, 0), 0);
       double score1 = m_ncc.at<double>(0, sorted_idx.at<int>(0, 0));
       double score2 = m_ncc.at<double>(0, sorted_idx.at<int>(0, 1));
-      confidence_ = score2 / score1;
-      
+      confidence_ = (score2 - score1) / score2;
       switch(label_)
       {
         case 100:
@@ -108,7 +110,7 @@ int main(int argc, char** argv)
           break;
         default: face_name_ = std::to_string(label_);
       }
-      std::string label_str = face_name_ + "(" + std::to_string(confidence_) + ")";
+      std::string label_str = face_name_ + " (" + std::to_string(confidence_) + ")";
 
       // Visualize
       cv::rectangle(frame, faces[i], cv::Scalar(0, 255, 0), 2, 8, 0);
@@ -121,7 +123,7 @@ int main(int argc, char** argv)
     if(key == 'q')
     {
       cout << "User exit." << endl;
-      break;
+      return(0);
     }
   }
 
