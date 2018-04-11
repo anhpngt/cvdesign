@@ -18,7 +18,7 @@ int main(int argc, char** argv)
   face_detector.load(detection_model_file);
 
   // Loading the Face Recognition model: data mean, eigen values/vector/faces
-  std::string recognition_model_file = "/home/echo/cvdesign/FaceRecognition/eigenfaces_models/eigenfaces_040418.yaml";
+  std::string recognition_model_file = "/home/echo/cvdesign/FaceRecognition/eigenfaces_models/eigenfaces_050418_2.yaml";
   cout << "Reading recognition model at " << recognition_model_file << endl;
   cv::FileStorage efs(recognition_model_file, cv::FileStorage::READ);
   cv::Mat m_labels(0, 0, CV_64FC1);                       // [N x 1]
@@ -61,7 +61,7 @@ int main(int argc, char** argv)
     // cv::resize(frame_gray, frame_gray, cv::Size(1280, 960));
 
     std::vector<cv::Rect> faces;
-    face_detector.detectMultiScale(frame_gray, faces, 1.1, 3, 0 | cv::CASCADE_SCALE_IMAGE, cv::Size(30, 30));
+    face_detector.detectMultiScale(frame_gray, faces, 1.1, 3, 0 | cv::CASCADE_SCALE_IMAGE, cv::Size(40, 40));
     // Recognition on detected faces
     for(size_t i = 0, i_end = faces.size(); i < i_end; i++)
     {

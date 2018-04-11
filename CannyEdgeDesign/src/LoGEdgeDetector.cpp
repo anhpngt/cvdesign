@@ -65,7 +65,7 @@ public:
   ImageProcessing(Vec2i, double);
 
   Vec2i img_src_;
-  Vec2d img_blur_, img_Ix_, img_LoG_, img_edge_;
+  Vec2d img_blur_, img_LoG_, img_edge_;
   Vec2d gauss_mask_, log_mask_;
   double sigma_;
 
@@ -131,6 +131,7 @@ ImageProcessing::ImageProcessing(Vec2i img, double sigma):
   ////////////////////////////////////////
 
   // Laplacian is computed using Sobel operator twice in each direction
+  // Laplacian can also be computed using a mask
   if(!use_kernel_for_log)
   {
     Vec2d img_Ix, img_Ix2, img_Iy, img_Iy2;
