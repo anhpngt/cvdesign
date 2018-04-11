@@ -34,7 +34,7 @@ Vec2i Vec2dToVec2i(const Vec2d input)
       if(input[x][y] > 255) output[x][y] = 255;
       else if (input[x][y] < 0) 
       {
-        printf("pixel (%d, %d) of value %.2lf", x, y, input[x][y]);
+        // printf("pixel (%d, %d) of value %.2lf", x, y, input[x][y]);
         output[x][y] = 0;
       }
       else output[x][y] = (pixel_t)input[x][y];
@@ -350,6 +350,9 @@ int main(int argc, char** argv)
   cv::namedWindow("Canny Edge Detector", cv::WINDOW_AUTOSIZE);
 
   cv::Mat cv_src = VecToMat(img_src);
+  // cv::Mat cv_blur = VecToMat(imgproc.img_Ix_);
+  // cv::Mat cv_I = VecToMat(imgproc.img_Iy_);
+  // cv::Mat cv_nms = VecToMat(imgproc.img_I_);
   cv::Mat cv_blur = VecToMat(imgproc.img_blur_);
   cv::Mat cv_I = VecToMat(imgproc.img_I_);
   cv::Mat cv_nms = VecToMat(imgproc.img_nms_);
