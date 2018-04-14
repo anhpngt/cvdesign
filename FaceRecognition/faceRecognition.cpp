@@ -110,7 +110,7 @@ int main(int argc, char** argv)
           break;
         default: face_name_ = std::to_string(label_);
       }
-      std::string label_str = face_name_ + " (" + std::to_string(confidence_) + ")";
+      std::string label_str = face_name_ /*+ " (" + std::to_string(confidence_) + ")"*/;
 
       // Visualize
       cv::rectangle(frame, faces[i], cv::Scalar(0, 255, 0), 2, 8, 0);
