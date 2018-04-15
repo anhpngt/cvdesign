@@ -18,7 +18,7 @@ int main(int argc, char** argv)
   face_detector.load(detection_model_file);
 
   // Loading the Face Recognition model: data mean, eigen values/vector/faces
-  std::string recognition_model_file = "/home/echo/cvdesign/FaceRecognition/eigenfaces_models/eigenfaces_050418_2.yaml";
+  std::string recognition_model_file = "/home/echo/cvdesign/FaceRecognition/eigenfaces_models/eigenfaces_150418.yaml";
   cout << "Reading recognition model at " << recognition_model_file << endl;
   cv::FileStorage efs(recognition_model_file, cv::FileStorage::READ);
   cv::Mat m_labels(0, 0, CV_64FC1);                       // [N x 1]
@@ -61,7 +61,7 @@ int main(int argc, char** argv)
     // cv::resize(frame_gray, frame_gray, cv::Size(1280, 960));
 
     std::vector<cv::Rect> faces;
-    face_detector.detectMultiScale(frame_gray, faces, 1.1, 3, 0 | cv::CASCADE_SCALE_IMAGE, cv::Size(40, 40));
+    face_detector.detectMultiScale(frame_gray, faces, 1.1, 3, 0 | cv::CASCADE_SCALE_IMAGE, cv::Size(50, 50));
     // Recognition on detected faces
     for(size_t i = 0, i_end = faces.size(); i < i_end; i++)
     {
@@ -81,7 +81,6 @@ int main(int argc, char** argv)
 
       // Do NCC
       int label_;
-      double confidence_;
       std::string face_name_;
 
       cv::Mat m_face_pca_spreaded = cv::repeat(m_face_pca, 1, m_eigenfaces.cols); // spread to [200 x N] for matrix subtraction
@@ -91,9 +90,6 @@ int main(int argc, char** argv)
       cv::Mat sorted_idx;                                 // [1 x N]
       cv::sortIdx(m_ncc, sorted_idx, cv::SORT_EVERY_ROW | cv::SORT_ASCENDING);
       label_ = m_labels.at<int>(sorted_idx.at<int>(0, 0), 0);
-      double score1 = m_ncc.at<double>(0, sorted_idx.at<int>(0, 0));
-      double score2 = m_ncc.at<double>(0, sorted_idx.at<int>(0, 1));
-      confidence_ = (score2 - score1) / score2;
       switch(label_)
       {
         case 100:
@@ -110,7 +106,7 @@ int main(int argc, char** argv)
           break;
         default: face_name_ = std::to_string(label_);
       }
-      std::string label_str = face_name_ /*+ " (" + std::to_string(confidence_) + ")"*/;
+      std::string label_str = face_name_;
 
       // Visualize
       cv::rectangle(frame, faces[i], cv::Scalar(0, 255, 0), 2, 8, 0);

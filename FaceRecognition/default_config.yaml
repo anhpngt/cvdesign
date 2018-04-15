@@ -11,6 +11,6 @@ Eigen.FullModel: "/home/echo/cvdesign/FaceRecognition/eigen_models/eigen_full.ya
 Eigen.ReducedModel: "/home/echo/cvdesign/FaceRecognition/eigen_models/eigen.yaml"
 
 Output.Directory: "."
-Output.EigenfacesModel: "/home/echo/cvdesign/FaceRecognition/eigenfaces_models/eigenfaces_050418.yaml"
+Output.EigenfacesModel: "/home/echo/cvdesign/FaceRecognition/eigenfaces_models/eigenfaces_150418.yaml"
 Output.FullModel: "./eigen_full_new.yaml"
 Output.ReducedModel: "./eigen_new.yaml"
