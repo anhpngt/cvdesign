@@ -4,9 +4,11 @@ CannyEdgeDesign/build/
 FaceRecognition/build/
 FaceRecognition/faces_database/
 FaceRecognition/eigen_models/
-FaceRecognition/eigenfaces_models/
+FaceRecognition/eigenfaces_models/eigenfaces_300318.yaml
+FaceRecognition/eigenfaces_models/eigenfaces_040418.yaml
+FaceRecognition/eigenfaces_models/eigenfaces_050418_1.yaml
+FaceRecognition/eigenfaces_models/eigenfaces_050418_2.yaml
 FaceRecognition/opencv_eigenfaces_models/
-FaceRecognition/haarcascades_models/
 
 HandGestureRecognition/simena86/
 HandGestureRecognition/victordibia/
