@@ -54,17 +54,73 @@ def load_image_into_numpy_array(image):
 def draw_fps_on_image(fps, image_np):
   cv2.putText(image_np, fps, (20, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (77, 255, 9), 2)
 
+def put_code_on_image(code, color, image_np):
+  codeStr = ''
+  for i in range(len(code)):
+    codeStr += str(code[i]) + ' '
+  cv2.putText(image_np, codeStr, (20, 430), cv2.FONT_HERSHEY_SIMPLEX, 0.75, color, 2)
+
+def put_hint_on_image(hint, image_np):
+  cv2.putText(image_np, hint, (20, 430), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 255, 0), 2)
+
 start_time = datetime.datetime.now()
 num_frames = 0
 detection = []
 code = []
 wallTime = time.time()
 
+password = [0, 1, 2, 3, 4, 5]
+hint = 'Password for the next round: BENG'
+finished = False
+waitCount = 0
+successCount = 0
+failureCount = 0
+
 with detection_graph.as_default():
   with tf.Session(graph=detection_graph) as sess:
     while True:
       begin_time = time.time()
       ret, image_np = cap.read()
+
+      if len(code) == len(password) and not finished:
+        waitCount += 1
+        if waitCount > 80:
+          if code == password:
+            finished = True
+            continue
+          else:
+            if failureCount < 80:
+              put_code_on_image(code, (0, 0, 255), image_np)
+              cv2.imshow(winName, image_np)
+              cv2.waitKey(5)
+              failureCount += 1
+              continue
+            else:
+              code.clear()
+              failureCount = 0
+              waitCount = 0
+              continue
+        else:
+          put_code_on_image(code, (0, 0, 0), image_np)
+          cv2.imshow(winName, image_np)
+          cv2.waitKey(5)
+          continue
+
+      if finished == True:
+        if successCount > 40:
+          put_hint_on_image(hint, image_np)
+          cv2.imshow(winName, image_np)
+          if cv2.waitKey(5) & 0xFF == ord('q'):
+            cv2.destroyAllWindows()
+            break
+          continue
+        else:
+          successCount += 1
+          put_code_on_image(code, (0, 255, 0), image_np)
+          cv2.imshow(winName, image_np)
+          cv2.waitKey(5)
+          continue
+
       image_rgb = cv2.cvtColor(image_np, cv2.COLOR_BGR2RGB)
 
       # Expand dimensions since the model expects images to have shape: [1, None, None, 3]
@@ -124,8 +180,10 @@ with detection_graph.as_default():
       if (fps > 0):
         draw_fps_on_image("FPS : " + str(int(fps)), image_np)
       
+      # Put code on image
+      put_code_on_image(code, (0, 255, 255), image_np)
+
       cv2.imshow(winName, image_np)
-  
       if cv2.waitKey(5) & 0xFF == ord('q'):
         cv2.destroyAllWindows()
         break
