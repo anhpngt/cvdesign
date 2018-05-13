@@ -12,5 +12,7 @@ FaceRecognition/opencv_eigenfaces_models/
 
 HandGestureRecognition/simena86/
 HandGestureRecognition/victordibia/
-HandGestureRecognition/models/
+HandGestureRecognition/models/05*
+HandGestureRecognition/models/all_five_pipeline.config
+HandGestureRecognition/models/object-detection.pbtxt
 

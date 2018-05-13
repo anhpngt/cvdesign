@@ -19,7 +19,7 @@ from object_detection.utils import visualization_utils as vis_util
 import webbrowser
 import uinput
 
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(1)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 winH = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
@@ -55,12 +55,19 @@ def draw_fps_on_image(fps, image_np):
   cv2.putText(image_np, fps, (20, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (77, 255, 9), 2)
 
 def put_code_on_image(code, color, image_np):
+  if len(code) == 0:
+    return
   codeStr = ''
   for i in range(len(code)):
     codeStr += str(code[i]) + ' '
+  
+  ret, baseline = cv2.getTextSize(codeStr, cv2.FONT_HERSHEY_SIMPLEX, 0.75, 2)
+  cv2.rectangle(image_np, (15, 430+baseline), (15+ret[0], 430-ret[1]-5), (255, 255, 255), -1)
   cv2.putText(image_np, codeStr, (20, 430), cv2.FONT_HERSHEY_SIMPLEX, 0.75, color, 2)
 
 def put_hint_on_image(hint, image_np):
+  ret, baseline = cv2.getTextSize(hint, cv2.FONT_HERSHEY_SIMPLEX, 0.75, 2)
+  cv2.rectangle(image_np, (15, 430+baseline), (15+ret[0], 430-ret[1]-5), (255, 255, 255), -1)
   cv2.putText(image_np, hint, (20, 430), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 255, 0), 2)
 
 start_time = datetime.datetime.now()
@@ -69,8 +76,8 @@ detection = []
 code = []
 wallTime = time.time()
 
-password = [0, 1, 2, 3, 4, 5]
-hint = 'Password for the next round: BENG'
+password = [2, 1, 4, 0]
+hint = 'Successful! Proceed to next game.'
 finished = False
 waitCount = 0
 successCount = 0
@@ -148,7 +155,7 @@ with detection_graph.as_default():
         detection.append(detected_class)
 
       if time.time() - wallTime > 2:
-        if len(detection) > 20:
+        if len(detection) > 40:
           bin_count = np.bincount(detection)
           most_common = bin_count.argmax()
           if most_common != detection[-1]:

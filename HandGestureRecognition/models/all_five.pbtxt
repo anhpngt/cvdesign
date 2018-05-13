@@ -1,0 +1,36 @@
+item {
+  id: 1
+  name: "zero"
+  display_name: "zero"
+}
+
+item {
+  id: 2
+  name: "one"
+  display_name: "one"
+}
+
+item {
+  id: 3
+  name: "two"
+  display_name: "two"
+}
+
+item {
+  id: 4
+  name: "three"
+  display_name: "three"
+}
+
+item {
+  id: 5
+  name: "four"
+  display_name: "four"
+}
+
+item {
+  id: 6
+  name: "five"
+  display_name: "five"
+}
+
