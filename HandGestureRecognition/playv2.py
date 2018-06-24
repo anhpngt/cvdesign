@@ -31,6 +31,7 @@ PATH_TO_LABELS = 'models/all_five.pbtxt'
 NUM_CLASSES = 6
 
 winName = 'detection'
+cv2.namedWindow('detection', cv2.WINDOW_NORMAL)
 
 detection_graph = tf.Graph()
 with detection_graph.as_default():
@@ -188,7 +189,7 @@ with detection_graph.as_default():
         draw_fps_on_image("FPS : " + str(int(fps)), image_np)
       
       # Put code on image
-      put_code_on_image(code, (0, 255, 255), image_np)
+      put_code_on_image(code, (255, 0, 0), image_np)
 
       cv2.imshow(winName, image_np)
       if cv2.waitKey(5) & 0xFF == ord('q'):
